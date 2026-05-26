@@ -58,7 +58,7 @@ async def ping_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     try:
         start = time.monotonic()
-        response = await ai_router.chat(
+        response = await ai_router.chat_with_fallback(
             [ChatMessage(role="user", content="Say exactly: 'pong'. Nothing else.")],
             temperature=0.1,
             max_tokens=10,
