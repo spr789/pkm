@@ -45,3 +45,12 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle ``/help`` — display the full command reference."""
     await update.message.reply_text(format_help(), parse_mode=ParseMode.HTML)
+
+
+@authorized_only
+async def unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle unrecognised commands — show help."""
+    await update.message.reply_text(
+        f"❌ Unknown command. Here's what I can do:\n\n{format_help()}",
+        parse_mode=ParseMode.HTML,
+    )
