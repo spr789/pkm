@@ -47,8 +47,9 @@ async def note_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     """Handle ``/note <text>`` — capture a note."""
     text = " ".join(context.args) if context.args else ""
     if not text:
+        context.user_data["expecting_note"] = True
         await update.message.reply_text(
-            "📝 <b>Usage:</b> /note <i>your text here</i>",
+            "📝 Send me the note text now.",
             parse_mode=ParseMode.HTML,
         )
         return
@@ -75,8 +76,9 @@ async def idea_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     """Handle ``/idea <text>`` — capture an idea."""
     text = " ".join(context.args) if context.args else ""
     if not text:
+        context.user_data["expecting_idea"] = True
         await update.message.reply_text(
-            "💡 <b>Usage:</b> /idea <i>your brilliant idea</i>",
+            "💡 Send me your brilliant idea now.",
             parse_mode=ParseMode.HTML,
         )
         return
