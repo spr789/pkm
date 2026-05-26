@@ -83,12 +83,12 @@ class AIRouter:
         if name == "opencode":
             from app.ai.providers.opencode_provider import OpenCodeProvider
 
-            return OpenCodeProvider(api_key, default_model=settings.ai_default_model)
+            return OpenCodeProvider(api_key)
 
         if name == "openrouter":
             from app.ai.providers.openrouter import OpenRouterProvider
 
-            return OpenRouterProvider(api_key, default_model=settings.ai_default_model)
+            return OpenRouterProvider(api_key)
 
         if name == "openai":
             from app.ai.providers.openai_provider import OpenAIProvider
@@ -108,7 +108,7 @@ class AIRouter:
         if name == "sarvam":
             from app.ai.providers.sarvam_provider import SarvamProvider
 
-            return SarvamProvider(api_key, default_model=settings.ai_default_model)
+            return SarvamProvider(api_key)
 
         logger.warning("Unknown provider name: %s", name)
         return None
