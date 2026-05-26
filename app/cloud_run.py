@@ -30,22 +30,9 @@ async def health():
 
 
 def build_bot_app() -> Application:
-    from app.ai.router import ai_router
-
-    async def post_init(application: Application) -> None:
-        sessionmanager.init(settings.database_url)
-        logger.info("Database session manager initialised")
-
-    async def post_shutdown(application: Application) -> None:
-        await ai_router.close()
-        await sessionmanager.close()
-        logger.info("Shutdown complete")
-
     app = (
         Application.builder()
         .token(settings.telegram_bot_token.get_secret_value())
-        .post_init(post_init)
-        .post_shutdown(post_shutdown)
         .build()
     )
     register_handlers(app)
@@ -54,6 +41,11 @@ def build_bot_app() -> Application:
 
 async def main() -> None:
     port = int(os.environ.get("PORT", "8080"))
+
+    from app.ai.router import ai_router
+
+    sessionmanager.init(settings.database_url)
+    logger.info("Database session manager initialised")
 
     bot_app = build_bot_app()
     await bot_app.initialize()
@@ -66,9 +58,11 @@ async def main() -> None:
     try:
         await asyncio.gather(server.serve(), bot_app.updater.start_polling())
     finally:
+        await ai_router.close()
         await bot_app.updater.stop()
         await bot_app.stop()
         await bot_app.shutdown()
+        await sessionmanager.close()
 
 
 if __name__ == "__main__":
