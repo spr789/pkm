@@ -54,8 +54,6 @@ async def ping_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     """Test the AI provider — ping OpenCode and report status."""
     from app.ai.router import ai_router
 
-    msg = await update.message.reply_text("⏳ Pinging AI provider…")
-
     try:
         start = time.monotonic()
         response = await ai_router.chat_with_fallback(
@@ -75,9 +73,9 @@ async def ping_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             parts.append(f"\n🧠 <b>Reasoning:</b>\n<pre>{response.reasoning[:500]}</pre>")
         parts.append(f"\n💬 <b>Response:</b> {response.content}")
 
-        await msg.edit_text("\n".join(parts), parse_mode=ParseMode.HTML)
+        await update.message.reply_text("\n".join(parts), parse_mode=ParseMode.HTML)
     except Exception as e:
-        await msg.edit_text(f"❌ AI ping failed:\n<code>{e}</code>", parse_mode=ParseMode.HTML)
+        await update.message.reply_text(f"❌ AI ping failed:\n<code>{e}</code>", parse_mode=ParseMode.HTML)
 
 
 @authorized_only
