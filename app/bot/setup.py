@@ -21,6 +21,7 @@ from app.bot.handlers.bookmark import bookmark_command
 from app.bot.handlers.code import code_command
 from app.bot.handlers.search import search_command, recent_command, tags_command
 from app.bot.handlers.snapshot import snapshot_command
+from app.bot.handlers.ai_settings import provider_command, model_command
 from app.bot.handlers.voice import voice_handler
 from app.bot.handlers.media import photo_handler, document_handler
 from app.bot.handlers.raw import raw_text_handler
@@ -52,6 +53,8 @@ def register_handlers(app: Application) -> None:
     app.add_handler(CommandHandler("recent", recent_command))
     app.add_handler(CommandHandler("tags", tags_command))
     app.add_handler(CommandHandler("snapshot", snapshot_command))
+    app.add_handler(CommandHandler("provider", provider_command))
+    app.add_handler(CommandHandler("model", model_command))
 
     # ── unknown command fallback (MUST be last command handler) ──────────
     app.add_handler(MessageHandler(filters.COMMAND, unknown_command))

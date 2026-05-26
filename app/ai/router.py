@@ -18,6 +18,7 @@ from app.ai.base import (
     ChatMessage,
     ChatResponse,
 )
+from app.ai.override import get_model, get_provider
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -137,16 +138,13 @@ class AIRouter:
         return self._providers[name]
 
     def get_default_provider(self) -> AIProvider:
-        """Get the default provider from settings.
-
-        Returns:
-            The default AIProvider instance.
-
-        Raises:
-            AIProviderError: If the default provider is not available.
-        """
-        default_name = getattr(settings, "ai_default_provider", "openrouter")
+        """Get the default provider from settings or override."""
+        default_name = get_provider() or getattr(settings, "ai_default_provider", "openrouter")
         return self.get_provider(default_name)
+
+    def _get_default_model(self) -> str | None:
+        """Get the model override if set, otherwise None."""
+        return get_model()
 
     def _get_available_providers(self) -> list[str]:
         """Get list of provider names that have API keys configured.
@@ -173,28 +171,12 @@ class AIRouter:
         model: str | None = None,
         **kwargs,
     ) -> ChatResponse:
-        """Send a chat request to a specific or default provider.
-
-        Retries up to 3 times with exponential backoff on rate limit
-        errors.
-
-        Args:
-            messages: List of chat messages.
-            provider: Optional provider name; uses default if None.
-            model: Optional model override.
-            **kwargs: Additional parameters (temperature, max_tokens).
-
-        Returns:
-            ChatResponse from the provider.
-
-        Raises:
-            AIProviderError: If the request fails after retries.
-        """
         if provider is not None:
             ai_provider = self.get_provider(provider)
         else:
             ai_provider = self.get_default_provider()
 
+        model = model or get_model() or None
         return await ai_provider.chat(messages, model=model, **kwargs)
 
     async def chat_with_fallback(
@@ -202,22 +184,6 @@ class AIRouter:
         messages: list[ChatMessage],
         **kwargs,
     ) -> ChatResponse:
-        """Send a chat request with automatic provider fallback.
-
-        Tries the default provider first, then falls back through
-        the chain (openrouter → openai → anthropic → gemini),
-        skipping providers without configured API keys.
-
-        Args:
-            messages: List of chat messages.
-            **kwargs: Additional parameters (temperature, max_tokens, model).
-
-        Returns:
-            ChatResponse from the first successful provider.
-
-        Raises:
-            AIProviderError: If all providers fail.
-        """
         available = self._get_available_providers()
         if not available:
             raise AIProviderError(
@@ -225,10 +191,8 @@ class AIRouter:
                 provider="none",
             )
 
-        # Try default provider first
-        default_name = getattr(settings, "ai_default_provider", "openrouter")
+        default_name = get_provider() or getattr(settings, "ai_default_provider", "openrouter")
         if default_name in available:
-            # Move default to front
             available = [default_name] + [p for p in available if p != default_name]
 
         last_error: AIProviderError | None = None

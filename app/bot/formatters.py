@@ -256,6 +256,8 @@ def format_help() -> str:
         "\n"
         "<b>🔧 System</b>\n"
         "/ping — Test AI provider connectivity\n"
+        "/provider [name] — Show or switch AI provider\n"
+        "/model [name] — Show or switch AI model\n"
         "\n"
         "<b>📎 Media</b>\n"
         "Send a 🎤 voice, 📷 photo, or 📄 document\n"

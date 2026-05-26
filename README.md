@@ -88,6 +88,8 @@ All settings are via `.env` file (see `.env.example`):
 | `/tags` | List all tags with entry counts |
 | `/snapshot [daily\|weekly\|monthly] [new]` | Generate/retrieve knowledge snapshot |
 | `/ping` | Test AI provider connectivity |
+| `/provider [name]` | Show or switch AI provider |
+| `/model [name]` | Show or switch AI model |
 
 **Media:** Voice messages, photos, and documents are saved automatically.  
 **Text:** Non-command messages show the help reference — use `/note <text>` to save.
