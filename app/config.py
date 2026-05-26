@@ -33,7 +33,7 @@ class Settings(BaseSettings):
 
     # AI Configuration
     ai_default_provider: str = "gemini"
-    ai_default_model: str = "gemini-2.0-flash"
+    ai_default_model: str = "gemini-2.5-flash"
 
     # Application
     env: str = "development"

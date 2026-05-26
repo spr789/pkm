@@ -16,7 +16,7 @@ from app.ai.base import (
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_MODEL = "gemini-2.0-flash"
+DEFAULT_MODEL = "gemini-2.5-flash"
 BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
 
 
