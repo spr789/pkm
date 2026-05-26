@@ -262,5 +262,5 @@ def format_help() -> str:
         "— they're saved automatically.\n"
         "\n"
         "<b>💬 Quick capture</b>\n"
-        "Just send any text message — it's saved as a note.\n"
+        "Use /note <i>text</i> to save anything.\n"
     )

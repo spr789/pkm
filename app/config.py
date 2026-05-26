@@ -31,8 +31,8 @@ class Settings(BaseSettings):
     opencode_api_key: SecretStr | None = None
 
     # AI Configuration
-    ai_default_provider: str = "opencode"
-    ai_default_model: str = "deepseek-v4-flash-free"
+    ai_default_provider: str = "gemini"
+    ai_default_model: str = "gemini-2.0-flash"
 
     # Application
     env: str = "development"

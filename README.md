@@ -65,8 +65,8 @@ All settings are via `.env` file (see `.env.example`):
 | `ANTHROPIC_API_KEY` | Anthropic API key (fallback) |
 | `GOOGLE_API_KEY` | Google Gemini API key (fallback) |
 | `OPENCODE_API_KEY` | OpenCode Zen API key (default provider) |
-| `AI_DEFAULT_PROVIDER` | Default AI provider (default: `opencode`) |
-| `AI_DEFAULT_MODEL` | Default AI model (default: `deepseek-v4-flash-free`) |
+| `AI_DEFAULT_PROVIDER` | Default AI provider (default: `gemini`) |
+| `AI_DEFAULT_MODEL` | Default AI model (default: `gemini-2.0-flash`) |
 | `LOG_LEVEL` | Logging level (default: `INFO`) |
 
 ## Bot commands
@@ -88,7 +88,8 @@ All settings are via `.env` file (see `.env.example`):
 | `/snapshot [daily\|weekly\|monthly] [new]` | Generate/retrieve knowledge snapshot |
 | `/ping` | Test AI provider connectivity |
 
-**Media:** Voice messages, photos, and documents are saved automatically.
+**Media:** Voice messages, photos, and documents are saved automatically.  
+**Text:** Non-command messages show the help reference — use `/note <text>` to save.
 
 ## Project structure
 
