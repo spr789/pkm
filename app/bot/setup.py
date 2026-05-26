@@ -18,7 +18,7 @@ from app.bot.handlers.start import start_command, help_command, ping_command, un
 from app.bot.handlers.note import note_command, idea_command
 from app.bot.handlers.task import task_command, tasks_command, done_command
 from app.bot.handlers.bookmark import bookmark_command
-from app.bot.handlers.code import code_command, code_message_handler
+from app.bot.handlers.code import code_command
 from app.bot.handlers.search import search_command, recent_command, tags_command
 from app.bot.handlers.snapshot import snapshot_command
 from app.bot.handlers.voice import voice_handler
@@ -62,11 +62,6 @@ def register_handlers(app: Application) -> None:
     app.add_handler(MessageHandler(filters.Document.ALL, document_handler))
 
     # ── plain text handlers (MUST be last) ──────────────────────────────
-    # Interactive code capture takes priority when `expecting_code` is set.
-    app.add_handler(
-        MessageHandler(filters.TEXT & ~filters.COMMAND, code_message_handler),
-        group=1,
-    )
     app.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND, raw_text_handler),
         group=1,

@@ -1,4 +1,4 @@
-"""/code command handler and follow-up code message handler."""
+"""/code command handler."""
 
 from __future__ import annotations
 
@@ -19,14 +19,6 @@ logger = logging.getLogger(__name__)
 
 @authorized_only
 async def code_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle ``/code [language] <code>`` — save a code snippet.
-
-    Usage patterns:
-    * ``/code python print('hi')`` — inline, language = python
-    * ``/code`` followed by a separate message — interactive mode
-    * ``/code`` with text on a new line — the full message text after
-      the command line is treated as code.
-    """
     # Extract raw text after the /code command itself.
     message_text = update.message.text or ""
     # Remove the /code prefix (may include @botname).
@@ -82,28 +74,6 @@ async def code_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         else:
             language = None
             code_content = token
-
-    await _save_code(update, code_content, language)
-
-
-@authorized_only
-async def code_message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle a plain text message when the bot is expecting code input.
-
-    This is triggered only when ``context.user_data['expecting_code']``
-    is ``True`` — i.e. the user previously sent ``/code`` without inline
-    content.
-    """
-    if not context.user_data.get("expecting_code"):
-        return  # not in code-capture mode — let other handlers deal with it
-
-    code_content = update.message.text or ""
-    language = context.user_data.pop("code_language", None)
-    context.user_data["expecting_code"] = False
-
-    if not code_content.strip():
-        await update.message.reply_text("⚠️ Empty code — nothing saved.")
-        return
 
     await _save_code(update, code_content, language)
 
