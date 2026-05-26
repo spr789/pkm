@@ -22,6 +22,7 @@ class ChatResponse:
     model: str
     provider: str
     usage: dict | None = field(default=None)
+    reasoning: str | None = field(default=None)
 
 
 class AIProvider(ABC):

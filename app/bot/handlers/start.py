@@ -65,14 +65,17 @@ async def ping_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         )
         elapsed = time.monotonic() - start
 
-        await msg.edit_text(
-            f"✅ AI is responding\n"
-            f"Model: <code>{response.model}</code>\n"
-            f"Provider: <code>{response.provider}</code>\n"
-            f"Response: {response.content}\n"
+        parts = [
+            "✅ AI is responding",
+            f"Model: <code>{response.model}</code>",
+            f"Provider: <code>{response.provider}</code>",
             f"Time: {elapsed:.1f}s",
-            parse_mode=ParseMode.HTML,
-        )
+        ]
+        if response.reasoning:
+            parts.append(f"\n🧠 <b>Reasoning:</b>\n<pre>{response.reasoning[:500]}</pre>")
+        parts.append(f"\n💬 <b>Response:</b> {response.content}")
+
+        await msg.edit_text("\n".join(parts), parse_mode=ParseMode.HTML)
     except Exception as e:
         await msg.edit_text(f"❌ AI ping failed:\n<code>{e}</code>", parse_mode=ParseMode.HTML)
 

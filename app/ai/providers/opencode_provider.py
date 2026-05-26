@@ -83,6 +83,7 @@ class OpenCodeProvider(AIProvider):
             ) from exc
 
         usage = data.get("usage")
+        reasoning = data.get("choices", [{}])[0].get("message", {}).get("reasoning_content")
 
         logger.debug("OpenCode response model=%s tokens=%s", model, usage)
         return ChatResponse(
@@ -90,6 +91,7 @@ class OpenCodeProvider(AIProvider):
             model=data.get("model", model),
             provider="opencode",
             usage=usage,
+            reasoning=reasoning,
         )
 
     async def close(self) -> None:
