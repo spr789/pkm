@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     anthropic_api_key: SecretStr | None = None
     google_api_key: SecretStr | None = None
     opencode_api_key: SecretStr | None = None
+    sarvam_api_key: SecretStr | None = None
 
     # AI Configuration
     ai_default_provider: str = "gemini"

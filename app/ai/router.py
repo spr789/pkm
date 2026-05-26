@@ -23,7 +23,7 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 # Provider fallback order
-FALLBACK_CHAIN = ["opencode", "openrouter", "openai", "anthropic", "gemini"]
+FALLBACK_CHAIN = ["opencode", "openrouter", "openai", "anthropic", "gemini", "sarvam"]
 
 
 class AIRouter:
@@ -52,6 +52,7 @@ class AIRouter:
             "openai": "openai_api_key",
             "anthropic": "anthropic_api_key",
             "gemini": "google_api_key",
+            "sarvam": "sarvam_api_key",
         }
 
         attr = key_map.get(provider_name)
@@ -103,6 +104,11 @@ class AIRouter:
             from app.ai.providers.google_provider import GeminiProvider
 
             return GeminiProvider(api_key)
+
+        if name == "sarvam":
+            from app.ai.providers.sarvam_provider import SarvamProvider
+
+            return SarvamProvider(api_key, default_model=settings.ai_default_model)
 
         logger.warning("Unknown provider name: %s", name)
         return None

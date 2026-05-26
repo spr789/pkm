@@ -65,6 +65,7 @@ All settings are via `.env` file (see `.env.example`):
 | `ANTHROPIC_API_KEY` | Anthropic API key (fallback) |
 | `GOOGLE_API_KEY` | Google Gemini API key (fallback) |
 | `OPENCODE_API_KEY` | OpenCode Zen API key (default provider) |
+| `SARVAM_API_KEY` | Sarvam AI API key (fallback) |
 | `AI_DEFAULT_PROVIDER` | Default AI provider (default: `gemini`) |
 | `AI_DEFAULT_MODEL` | Default AI model (default: `gemini-2.0-flash`) |
 | `LOG_LEVEL` | Logging level (default: `INFO`) |
@@ -145,7 +146,7 @@ alembic upgrade head
 
 If the primary AI provider fails (rate limit, unavailable), the system automatically tries the next provider in this order:
 
-1. **OpenCode** → 2. **OpenRouter** → 3. **OpenAI** → 4. **Anthropic** → 5. **Google Gemini**
+1. **OpenCode** → 2. **OpenRouter** → 3. **OpenAI** → 4. **Anthropic** → 5. **Google Gemini** → 6. **Sarvam AI**
 
 Only providers with configured API keys are attempted.
 
