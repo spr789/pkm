@@ -14,7 +14,7 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
 
 # ── handler imports ─────────────────────────────────────────────────────
-from app.bot.handlers.start import start_command, help_command, unknown_command
+from app.bot.handlers.start import start_command, help_command, ping_command, unknown_command
 from app.bot.handlers.note import note_command, idea_command
 from app.bot.handlers.task import task_command, tasks_command, done_command
 from app.bot.handlers.bookmark import bookmark_command
@@ -40,6 +40,7 @@ def register_handlers(app: Application) -> None:
     # ── command handlers ────────────────────────────────────────────────
     app.add_handler(CommandHandler("start", start_command))
     app.add_handler(CommandHandler("help", help_command))
+    app.add_handler(CommandHandler("ping", ping_command))
     app.add_handler(CommandHandler("note", note_command))
     app.add_handler(CommandHandler("idea", idea_command))
     app.add_handler(CommandHandler("task", task_command))

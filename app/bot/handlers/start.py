@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import logging
+import time
 
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
+from app.ai.base import ChatMessage
 from app.bot.formatters import format_help
 from app.bot.middleware import authorized_only
 
@@ -45,6 +47,34 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle ``/help`` — display the full command reference."""
     await update.message.reply_text(format_help(), parse_mode=ParseMode.HTML)
+
+
+@authorized_only
+async def ping_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Test the AI provider — ping OpenCode and report status."""
+    from app.ai.router import ai_router
+
+    msg = await update.message.reply_text("⏳ Pinging AI provider…")
+
+    try:
+        start = time.monotonic()
+        response = await ai_router.chat(
+            [ChatMessage(role="user", content="Say exactly: 'pong'. Nothing else.")],
+            temperature=0.1,
+            max_tokens=10,
+        )
+        elapsed = time.monotonic() - start
+
+        await msg.edit_text(
+            f"✅ AI is responding\n"
+            f"Model: <code>{response.model}</code>\n"
+            f"Provider: <code>{response.provider}</code>\n"
+            f"Response: {response.content}\n"
+            f"Time: {elapsed:.1f}s",
+            parse_mode=ParseMode.HTML,
+        )
+    except Exception as e:
+        await msg.edit_text(f"❌ AI ping failed:\n<code>{e}</code>", parse_mode=ParseMode.HTML)
 
 
 @authorized_only
