@@ -23,7 +23,7 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 # Provider fallback order
-FALLBACK_CHAIN = ["openrouter", "openai", "anthropic", "gemini"]
+FALLBACK_CHAIN = ["opencode", "openrouter", "openai", "anthropic", "gemini"]
 
 
 class AIRouter:
@@ -47,6 +47,7 @@ class AIRouter:
             The API key string or None if not configured.
         """
         key_map = {
+            "opencode": "opencode_api_key",
             "openrouter": "openrouter_api_key",
             "openai": "openai_api_key",
             "anthropic": "anthropic_api_key",
@@ -77,6 +78,11 @@ class AIRouter:
         api_key = self._get_api_key(name)
         if not api_key:
             return None
+
+        if name == "opencode":
+            from app.ai.providers.opencode_provider import OpenCodeProvider
+
+            return OpenCodeProvider(api_key, default_model=settings.ai_default_model)
 
         if name == "openrouter":
             from app.ai.providers.openrouter import OpenRouterProvider

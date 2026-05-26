@@ -28,10 +28,11 @@ class Settings(BaseSettings):
     openai_api_key: SecretStr | None = None
     anthropic_api_key: SecretStr | None = None
     google_api_key: SecretStr | None = None
+    opencode_api_key: SecretStr | None = None
 
     # AI Configuration
-    ai_default_provider: str = "openrouter"
-    ai_default_model: str = "deepseek/deepseek-chat-v3-0324:free"
+    ai_default_provider: str = "opencode"
+    ai_default_model: str = "deepseek-v4-flash-free"
 
     # Application
     env: str = "development"
