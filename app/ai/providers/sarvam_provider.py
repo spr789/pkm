@@ -40,6 +40,7 @@ class SarvamProvider(AIProvider):
             "messages": [{"role": m.role, "content": m.content} for m in messages],
             "temperature": temperature,
             "max_tokens": max_tokens,
+            "reasoning_effort": "low",
         }
 
         try:
@@ -72,7 +73,7 @@ class SarvamProvider(AIProvider):
         data = response.json()
 
         try:
-            content = data["choices"][0]["message"]["content"]
+            content = data["choices"][0]["message"]["content"] or ""
         except (KeyError, IndexError) as exc:
             raise AIProviderError(
                 f"Unexpected Sarvam response format: {data}",
