@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Awaitable, Callable
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,7 +26,13 @@ class AIProcessor:
     def __init__(self, ai_router: AIRouter) -> None:
         self.router = ai_router
 
-    async def process_entry(self, entry: Entry, db: AsyncSession) -> None:
+    async def process_entry(
+        self,
+        entry: Entry,
+        db: AsyncSession,
+        *,
+        progress_callback: Callable[..., Awaitable[None]] | None = None,
+    ) -> None:
         """Run the full AI processing pipeline on an entry.
 
         Pipeline steps:
@@ -40,7 +47,18 @@ class AIProcessor:
         Args:
             entry: The Entry to process (must have id and content).
             db: AsyncSession for database operations.
+            progress_callback: Optional async callable invoked with a
+                status label string at each pipeline step so the caller
+                can relay live feedback to the user.
         """
+
+        async def _report(label: str) -> None:
+            if progress_callback:
+                try:
+                    await progress_callback(label)
+                except Exception:
+                    logger.debug("Progress callback failed for: %s", label)
+
         if not entry.content:
             logger.debug("Skipping AI processing for entry id=%s (no content)", entry.id)
             return
@@ -50,6 +68,7 @@ class AIProcessor:
 
         # Step 1: Generate summary for longer content
         if len(entry.content) > 100:
+            await _report("🧠 Generating summary…")
             try:
                 summary = await self.summarize(entry.content)
                 logger.info("Generated summary for entry id=%s", entry.id)
@@ -57,6 +76,7 @@ class AIProcessor:
                 logger.exception("Failed to generate summary for entry id=%s", entry.id)
 
         # Step 2: Extract tags
+        await _report("🏷 Extracting tags…")
         try:
             existing_tag_names = [tag.name for tag in entry.tags] if entry.tags else []
             extracted_tags = await self.extract_tags(entry.content, existing_tags=existing_tag_names)
@@ -66,6 +86,7 @@ class AIProcessor:
 
         # Step 3: Update entry with AI metadata
         if summary is not None or extracted_tags:
+            await _report("💾 Saving enrichment…")
             try:
                 service = EntryService(db)
                 await service.update_ai_metadata(

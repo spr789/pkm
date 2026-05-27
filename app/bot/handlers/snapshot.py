@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 
 from telegram import Update
-from telegram.constants import ParseMode
+from telegram.constants import ChatAction, ParseMode
 from telegram.ext import ContextTypes
 
 from app.bot.formatters import format_snapshot
@@ -42,8 +42,10 @@ async def snapshot_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
     force_new = "new" in args
 
-    await update.message.reply_text(
-        f"📊 Generating <b>{period.value}</b> snapshot…",
+    # Send typing + status immediately
+    await update.message.chat.send_action(action=ChatAction.TYPING)
+    status_msg = await update.message.reply_text(
+        f"⏳ Generating <b>{period.value}</b> snapshot…",
         parse_mode=ParseMode.HTML,
     )
 
@@ -56,6 +58,8 @@ async def snapshot_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 snapshot = await svc.get_latest_snapshot(period)
 
             if snapshot is None:
+                # Keep typing alive while AI works
+                await update.message.chat.send_action(action=ChatAction.TYPING)
                 # Optionally pass AI service for summary generation.
                 try:
                     from app.ai.router import ai_router
@@ -64,11 +68,12 @@ async def snapshot_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 except ImportError:
                     snapshot = await svc.generate_snapshot(period)
 
-        await update.message.reply_text(
+        # Replace the status message with the final snapshot
+        await status_msg.edit_text(
             format_snapshot(snapshot), parse_mode=ParseMode.HTML,
         )
     except Exception:
         logger.exception("Failed to generate snapshot")
-        await update.message.reply_text(
+        await status_msg.edit_text(
             "❌ Failed to generate snapshot. Please try again later.",
         )

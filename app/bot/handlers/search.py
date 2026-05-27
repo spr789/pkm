@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 
 from telegram import Update
-from telegram.constants import ParseMode
+from telegram.constants import ChatAction, ParseMode
 from telegram.ext import ContextTypes
 
 from app.bot.formatters import (
@@ -32,6 +32,8 @@ async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         )
         return
 
+    await update.message.chat.send_action(action=ChatAction.TYPING)
+
     async with sessionmanager.session() as db:
         search_svc = SearchService(db)
         results, total = await search_svc.full_text_search(query, limit=20)
@@ -52,6 +54,8 @@ async def recent_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             limit = max(1, min(int(context.args[0]), 50))
         except ValueError:
             pass
+
+    await update.message.chat.send_action(action=ChatAction.TYPING)
 
     async with sessionmanager.session() as db:
         service = EntryService(db)
@@ -74,6 +78,8 @@ async def recent_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 @authorized_only
 async def tags_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle ``/tags`` — list all tags with entry counts."""
+    await update.message.chat.send_action(action=ChatAction.TYPING)
+
     async with sessionmanager.session() as db:
         search_svc = SearchService(db)
         tags = await search_svc.get_tags_with_counts()

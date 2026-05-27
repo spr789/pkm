@@ -9,7 +9,6 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
-from app.bot.formatters import format_entry_processing
 from app.bot.handlers.note import _process_entry_in_background
 from app.bot.middleware import authorized_only
 from app.database import sessionmanager
@@ -36,6 +35,9 @@ async def bookmark_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     url = context.args[0]
     description = " ".join(context.args[1:]) if len(context.args) > 1 else url
 
+    # Send typing immediately
+    await update.message.chat.send_action(action="typing")
+
     async with sessionmanager.session() as db:
         service = EntryService(db)
         entry = await service.create_entry(
@@ -47,7 +49,7 @@ async def bookmark_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         )
 
     msg = await update.message.reply_text(
-        format_entry_processing(entry),
+        "🔖 Bookmark received! Processing…",
         parse_mode=ParseMode.HTML,
     )
 

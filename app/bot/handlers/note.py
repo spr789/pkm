@@ -9,7 +9,6 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
-from app.bot.formatters import format_entry_processing
 from app.bot.middleware import authorized_only
 from app.database import sessionmanager
 from app.models.entry import EntryType
@@ -25,40 +24,60 @@ async def _process_entry_in_background(
 
     This is spawned via ``asyncio.create_task`` so that the user gets an
     immediate confirmation while AI enrichment happens asynchronously.
-    After enrichment completes, the original message is edited to show
-    the AI-generated summary and tags.
+
+    Uses :class:`ProgressReporter` to keep the Telegram "typing…"
+    indicator alive and edit the status message in-place at each step.
+    When enrichment completes, the status message is replaced with the
+    clean final result.
     """
     try:
         from telegram import Bot
 
         from app.ai.processors import AIProcessor
         from app.ai.router import ai_router
-        from app.bot.formatters import format_entry_enriched
+        from app.bot.formatters import format_entry_enriched, format_entry_saved
+        from app.bot.progress import ProgressReporter
         from app.config import settings
 
-        async with sessionmanager.session() as db:
-            service = EntryService(db)
-            entry = await service.get_entry(entry_id)
-            if entry is None:
-                logger.warning("Background AI: entry %d not found", entry_id)
-                return
+        bot = Bot(token=settings.telegram_bot_token.get_secret_value())
 
-            processor = AIProcessor(ai_router)
-            await processor.process_entry(entry, db)
-            logger.info("Background AI processing complete for entry %d", entry_id)
+        async with ProgressReporter(bot, chat_id, message_id) as progress:
+            await progress.step("📨 Message received — saving…")
 
-        # Re-fetch to get updated summary and tags
-        async with sessionmanager.session() as db:
-            service = EntryService(db)
-            updated = await service.get_entry(entry_id)
-            if updated and (updated.summary or updated.tags):
-                bot = Bot(token=settings.telegram_bot_token.get_secret_value())
-                await bot.edit_message_text(
-                    chat_id=chat_id,
-                    message_id=message_id,
-                    text=format_entry_enriched(updated),
-                    parse_mode=ParseMode.HTML,
+            async with sessionmanager.session() as db:
+                service = EntryService(db)
+                entry = await service.get_entry(entry_id)
+                if entry is None:
+                    logger.warning("Background AI: entry %d not found", entry_id)
+                    return
+
+                await progress.step("🤖 AI processing started…")
+
+                async def _on_progress(label: str) -> None:
+                    await progress.step(label)
+
+                processor = AIProcessor(ai_router)
+                await processor.process_entry(
+                    entry, db, progress_callback=_on_progress
                 )
+                logger.info("Background AI processing complete for entry %d", entry_id)
+
+            # Re-fetch to get updated summary and tags
+            async with sessionmanager.session() as db:
+                service = EntryService(db)
+                updated = await service.get_entry(entry_id)
+                if updated and (updated.summary or updated.tags):
+                    await progress.finalise(
+                        format_entry_enriched(updated),
+                        parse_mode=ParseMode.HTML,
+                    )
+                else:
+                    # No AI enrichment produced — show the plain saved card
+                    entry_for_saved = updated or entry
+                    await progress.finalise(
+                        format_entry_saved(entry_for_saved),
+                        parse_mode=ParseMode.HTML,
+                    )
     except Exception:
         logger.exception("Background AI processing failed for entry %d", entry_id)
 
@@ -75,6 +94,9 @@ async def note_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         )
         return
 
+    # Send typing immediately so the user knows we're alive
+    await update.message.chat.send_action(action="typing")
+
     async with sessionmanager.session() as db:
         service = EntryService(db)
         entry = await service.create_entry(
@@ -85,7 +107,7 @@ async def note_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         )
 
     msg = await update.message.reply_text(
-        format_entry_processing(entry),
+        "📨 Note received! Processing…",
         parse_mode=ParseMode.HTML,
     )
 
@@ -106,6 +128,9 @@ async def idea_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         )
         return
 
+    # Send typing immediately
+    await update.message.chat.send_action(action="typing")
+
     async with sessionmanager.session() as db:
         service = EntryService(db)
         entry = await service.create_entry(
@@ -116,7 +141,7 @@ async def idea_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         )
 
     msg = await update.message.reply_text(
-        format_entry_processing(entry),
+        "💡 Idea received! Processing…",
         parse_mode=ParseMode.HTML,
     )
 

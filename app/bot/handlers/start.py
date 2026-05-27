@@ -54,6 +54,8 @@ async def ping_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     """Test the AI provider — ping OpenCode and report status."""
     from app.ai.router import ai_router
 
+    await update.message.chat.send_action(action="typing")
+
     try:
         start = time.monotonic()
         response = await ai_router.chat_with_fallback(

@@ -9,7 +9,7 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
-from app.bot.formatters import format_entry_processing, format_help
+from app.bot.formatters import format_help
 from app.bot.middleware import authorized_only
 from app.database import sessionmanager
 from app.models.entry import EntryType
@@ -52,6 +52,9 @@ async def _save_entry(update: Update, entry_type: EntryType, text: str) -> None:
     """Persist an entry and trigger AI enrichment."""
     from app.bot.handlers.note import _process_entry_in_background
 
+    # Send typing immediately
+    await update.message.chat.send_action(action="typing")
+
     async with sessionmanager.session() as db:
         service = EntryService(db)
         entry = await service.create_entry(
@@ -61,8 +64,9 @@ async def _save_entry(update: Update, entry_type: EntryType, text: str) -> None:
             source_message_id=update.message.message_id,
         )
 
+    emoji = "📝" if entry_type == EntryType.NOTE else "💡"
     msg = await update.message.reply_text(
-        format_entry_processing(entry),
+        f"{emoji} Received! Processing…",
         parse_mode=ParseMode.HTML,
     )
 
