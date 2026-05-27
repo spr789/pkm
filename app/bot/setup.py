@@ -22,6 +22,8 @@ from app.bot.handlers.code import code_command
 from app.bot.handlers.search import search_command, recent_command, tags_command
 from app.bot.handlers.snapshot import snapshot_command
 from app.bot.handlers.ai_settings import provider_command, model_command
+from app.bot.handlers.ask import ask_command
+from app.bot.handlers.run import run_command
 from app.bot.handlers.voice import voice_handler
 from app.bot.handlers.media import photo_handler, document_handler
 from app.bot.handlers.raw import raw_text_handler
@@ -55,6 +57,9 @@ def register_handlers(app: Application) -> None:
     app.add_handler(CommandHandler("snapshot", snapshot_command))
     app.add_handler(CommandHandler("provider", provider_command))
     app.add_handler(CommandHandler("model", model_command))
+    app.add_handler(CommandHandler("ask", ask_command))
+    app.add_handler(CommandHandler("run", run_command))
+    app.add_handler(CommandHandler("clear", _clear_context))
 
     # ── unknown command fallback (MUST be last command handler) ──────────
     app.add_handler(MessageHandler(filters.COMMAND, unknown_command))
@@ -90,3 +95,16 @@ async def error_handler(update: object, context: object) -> None:
             )
         except Exception:
             logger.exception("Failed to send error message to user")
+
+
+async def _clear_context(update: Update, context: object) -> None:
+    """Handle ``/clear`` — reset /ask conversation history."""
+    from telegram.constants import ParseMode
+    from telegram.ext import ContextTypes
+
+    ctx: ContextTypes.DEFAULT_TYPE = context  # type: ignore[assignment]
+    ctx.user_data.pop("ask_history", None)
+    await update.message.reply_text(
+        "🗑 Conversation context cleared.",
+        parse_mode=ParseMode.HTML,
+    )

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import AsyncIterator
 
 from tenacity import (
     retry,
@@ -17,6 +18,7 @@ from app.ai.base import (
     AIRateLimitError,
     ChatMessage,
     ChatResponse,
+    StreamChunk,
 )
 from app.ai.override import get_model, get_provider
 from app.config import settings
@@ -191,19 +193,38 @@ class AIRouter:
                 provider="none",
             )
 
-        default_name = get_provider() or getattr(settings, "ai_default_provider", "openrouter")
-        if default_name in available:
-            available = [default_name] + [p for p in available if p != default_name]
+        # Custom fallback chain: Qwen -> DeepSeek -> Minimax -> Sarvam
+        custom_sequence = [
+            ("openrouter", "qwen/qwen-2.5-72b-instruct"),
+            ("openrouter", "deepseek/deepseek-chat"),
+            ("openrouter", "minimax/minimax-01"),
+            ("sarvam", "sarvam-30b"),
+        ]
+
+        attempts = []
+        for p_name, m_name in custom_sequence:
+            if p_name in available:
+                attempts.append((p_name, m_name))
+
+        # Append remaining available providers as backup
+        custom_providers = {p for p, _ in custom_sequence}
+        for provider_name in available:
+            if provider_name not in custom_providers:
+                attempts.append((provider_name, None))
 
         last_error: AIProviderError | None = None
-        for provider_name in available:
+        for provider_name, model_name in attempts:
             try:
-                logger.debug("Trying provider: %s", provider_name)
-                return await self.chat(messages, provider=provider_name, **kwargs)
+                logger.debug("Trying provider: %s, model: %s", provider_name, model_name)
+                call_kwargs = kwargs.copy()
+                if model_name:
+                    call_kwargs["model"] = model_name
+                return await self.chat(messages, provider=provider_name, **call_kwargs)
             except AIProviderError as exc:
                 logger.warning(
-                    "Provider %s failed: %s — trying next",
+                    "Provider %s (model: %s) failed: %s — trying next",
                     provider_name,
+                    model_name,
                     exc,
                 )
                 last_error = exc
@@ -211,6 +232,81 @@ class AIRouter:
 
         raise AIProviderError(
             f"All AI providers failed. Last error: {last_error}",
+            provider="fallback",
+        )
+
+    async def stream_chat_with_fallback(
+        self,
+        messages: list[ChatMessage],
+        **kwargs,
+    ) -> AsyncIterator[StreamChunk]:
+        """Stream a chat completion, trying providers in fallback order.
+
+        Yields :class:`StreamChunk` objects as they arrive from the
+        first provider that succeeds.  If a provider fails before
+        yielding any chunks, the next provider is tried.
+        """
+        available = self._get_available_providers()
+        if not available:
+            raise AIProviderError(
+                "No AI providers available — no API keys configured",
+                provider="none",
+            )
+
+        # Custom fallback chain: Qwen -> DeepSeek -> Minimax -> Sarvam
+        custom_sequence = [
+            ("openrouter", "qwen/qwen-2.5-72b-instruct"),
+            ("openrouter", "deepseek/deepseek-chat"),
+            ("openrouter", "minimax/minimax-01"),
+            ("sarvam", "sarvam-30b"),
+        ]
+
+        attempts = []
+        for p_name, m_name in custom_sequence:
+            if p_name in available:
+                attempts.append((p_name, m_name))
+
+        # Append remaining available providers as backup
+        custom_providers = {p for p, _ in custom_sequence}
+        for provider_name in available:
+            if provider_name not in custom_providers:
+                attempts.append((provider_name, None))
+
+        last_error: AIProviderError | None = None
+        for provider_name, model_name in attempts:
+            try:
+                logger.debug("Trying stream provider: %s, model: %s", provider_name, model_name)
+                ai_provider = self.get_provider(provider_name)
+                
+                call_kwargs = kwargs.copy()
+                target_model = model_name or get_model() or None
+                if model_name:
+                    call_kwargs["model"] = model_name
+
+                # Consume first chunk to verify the stream starts successfully
+                stream_iter = ai_provider.stream_chat(messages, model=target_model, **kwargs)
+                
+                try:
+                    first_chunk = await stream_iter.__anext__()
+                except StopAsyncIteration:
+                    return
+
+                yield first_chunk
+                async for chunk in stream_iter:
+                    yield chunk
+                return  # successfully streamed
+            except (AIProviderError, Exception) as exc:
+                logger.warning(
+                    "Stream provider %s (model: %s) failed: %s — trying next",
+                    provider_name,
+                    model_name,
+                    exc,
+                )
+                last_error = exc
+                continue
+
+        raise AIProviderError(
+            f"All AI providers failed for streaming. Last error: {last_error}",
             provider="fallback",
         )
 

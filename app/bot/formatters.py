@@ -286,6 +286,10 @@ def format_help() -> str:
         "/bookmark <i>url</i> [description] — Save a bookmark\n"
         "/code [lang] <i>code</i> — Save a code snippet\n"
         "\n"
+        "<b>🤖 AI Chat</b>\n"
+        "/ask <i>question</i> — Ask AI anything (with context)\n"
+        "/clear — Reset conversation context\n"
+        "\n"
         "<b>🔍 Retrieve</b>\n"
         "/search <i>query</i> — Full-text search\n"
         "/recent [n] — Show recent entries\n"
@@ -310,3 +314,4 @@ def format_help() -> str:
         "<b>💬 Quick capture</b>\n"
         "Use /note <i>text</i> to save anything.\n"
     )
+

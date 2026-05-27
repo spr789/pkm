@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 
 
@@ -23,6 +24,25 @@ class ChatResponse:
     provider: str
     usage: dict | None = field(default=None)
     reasoning: str | None = field(default=None)
+
+
+@dataclass
+class StreamChunk:
+    """A single chunk from a streaming AI response.
+
+    Attributes:
+        content: New content text delta (may be empty).
+        reasoning: New reasoning/thinking text delta (may be empty).
+        model: Model identifier (set on first or last chunk).
+        provider: Provider identifier.
+        done: True when this is the final chunk.
+    """
+
+    content: str = ""
+    reasoning: str = ""
+    model: str = ""
+    provider: str = ""
+    done: bool = False
 
 
 class AIProvider(ABC):
@@ -56,6 +76,30 @@ class AIProvider(ABC):
         """
         ...
 
+    async def stream_chat(
+        self,
+        messages: list[ChatMessage],
+        model: str | None = None,
+        temperature: float = 0.7,
+        max_tokens: int = 4096,
+    ) -> AsyncIterator[StreamChunk]:
+        """Stream a chat completion, yielding chunks as they arrive.
+
+        The default implementation falls back to the non-streaming
+        ``chat()`` method and yields a single done-chunk.  Providers
+        that support native streaming should override this.
+        """
+        response = await self.chat(
+            messages, model=model, temperature=temperature, max_tokens=max_tokens,
+        )
+        yield StreamChunk(
+            content=response.content,
+            reasoning=response.reasoning or "",
+            model=response.model,
+            provider=response.provider,
+            done=True,
+        )
+
     @abstractmethod
     async def close(self) -> None:
         """Close the underlying HTTP client and release resources."""
@@ -82,3 +126,4 @@ class AIRateLimitError(AIProviderError):
     """Raised when the AI provider returns a rate limit error (429)."""
 
     pass
+

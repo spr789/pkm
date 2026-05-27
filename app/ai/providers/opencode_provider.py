@@ -1,10 +1,19 @@
 from __future__ import annotations
 
+import json
 import logging
+from collections.abc import AsyncIterator
 
 import httpx
 
-from app.ai.base import AIProvider, AIProviderError, AIRateLimitError, ChatMessage, ChatResponse
+from app.ai.base import (
+    AIProvider,
+    AIProviderError,
+    AIRateLimitError,
+    ChatMessage,
+    ChatResponse,
+    StreamChunk,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -94,5 +103,85 @@ class OpenCodeProvider(AIProvider):
             reasoning=reasoning,
         )
 
+    async def stream_chat(
+        self,
+        messages: list[ChatMessage],
+        model: str | None = None,
+        temperature: float = 0.7,
+        max_tokens: int = 4096,
+    ) -> AsyncIterator[StreamChunk]:
+        """Stream a chat completion request to OpenCode."""
+        model = model or self.default_model
+
+        payload = {
+            "model": model,
+            "messages": [{"role": m.role, "content": m.content} for m in messages],
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "stream": True,
+        }
+
+        try:
+            async with self._client.stream(
+                "POST", "/chat/completions", json=payload
+            ) as response:
+                if response.status_code == 429:
+                    raise AIRateLimitError(
+                        "OpenCode rate limit exceeded",
+                        provider="opencode",
+                        status_code=429,
+                    )
+                if response.status_code != 200:
+                    body = await response.aread()
+                    raise AIProviderError(
+                        f"OpenCode stream error {response.status_code}: {body.decode()}",
+                        provider="opencode",
+                        status_code=response.status_code,
+                    )
+
+                async for line in response.aiter_lines():
+                    line = line.strip()
+                    if not line or not line.startswith("data: "):
+                        continue
+
+                    json_str = line[len("data: "):]
+                    if not json_str or json_str == "[DONE]":
+                        continue
+
+                    try:
+                        data = json.loads(json_str)
+                    except json.JSONDecodeError:
+                        continue
+
+                    choices = data.get("choices", [])
+                    if not choices:
+                        continue
+
+                    delta = choices[0].get("delta", {})
+                    content_delta = delta.get("content", "") or ""
+                    reasoning_delta = (
+                        delta.get("reasoning_content", "")
+                        or delta.get("reasoning", "")
+                        or ""
+                    )
+
+                    if content_delta or reasoning_delta:
+                        yield StreamChunk(
+                            content=content_delta,
+                            reasoning=reasoning_delta,
+                            model=model,
+                            provider="opencode",
+                        )
+
+        except (httpx.TimeoutException, httpx.HTTPError) as exc:
+            raise AIProviderError(
+                f"OpenCode stream error: {exc}",
+                provider="opencode",
+            ) from exc
+
+        # Final done chunk
+        yield StreamChunk(model=model, provider="opencode", done=True)
+
     async def close(self) -> None:
         await self._client.aclose()
+
