@@ -106,7 +106,9 @@ def format_entry(entry: Entry) -> str:
     emoji = _emoji(entry)
     type_label = entry.entry_type.replace("_", " ").title()
     title = f"<b>{_safe(entry.title)}</b>\n" if entry.title else ""
-    content_preview = _safe(_truncate(entry.content)) if entry.content else "<i>No content</i>"
+    content_preview = (
+        _safe(_truncate(entry.content)) if entry.content else "<i>No content</i>"
+    )
 
     tags_line = ""
     if hasattr(entry, "tags") and entry.tags:
@@ -169,8 +171,7 @@ def format_search_results(results: list[dict], query: str) -> str:
         headline_part = f"\n   {_safe(headline)}" if headline else ""
 
         lines.append(
-            f"{rank} {emoji}{title_part}  <code>#{entry_id}</code>"
-            f"{headline_part}"
+            f"{rank} {emoji}{title_part}  <code>#{entry_id}</code>{headline_part}"
         )
 
     return "\n".join(lines)
@@ -185,7 +186,11 @@ def format_task_list(tasks: list[Entry]) -> str:
     for task in tasks:
         status = task.task_status or TaskStatus.TODO
         emoji = TASK_STATUS_EMOJI.get(status, "⬜")
-        content = _safe(_truncate(task.content, 100)) if task.content else "<i>Untitled task</i>"
+        content = (
+            _safe(_truncate(task.content, 100))
+            if task.content
+            else "<i>Untitled task</i>"
+        )
         lines.append(f"{emoji} <code>#{task.id}</code> {content}")
 
     return "\n".join(lines)
@@ -193,7 +198,11 @@ def format_task_list(tasks: list[Entry]) -> str:
 
 def format_snapshot(snapshot: Any) -> str:
     """Render a knowledge snapshot summary."""
-    period = snapshot.period.value if hasattr(snapshot.period, "value") else str(snapshot.period)
+    period = (
+        snapshot.period.value
+        if hasattr(snapshot.period, "value")
+        else str(snapshot.period)
+    )
     title = f"📊 <b>{period.title()} Snapshot</b>\n"
 
     stats_parts: list[str] = []
@@ -214,6 +223,41 @@ def format_snapshot(snapshot: Any) -> str:
         ts = f"\n\n🕐 <i>Generated {relative_time(snapshot.created_at)}</i>"
 
     return f"{title}{stats}{summary}{ts}"
+
+
+def format_entry_processing(entry: Entry) -> str:
+    """Message shown immediately after save, before AI enrichment."""
+    emoji = _emoji(entry)
+    type_label = entry.entry_type.replace("_", " ").title()
+    preview = _safe(_truncate(entry.content, 120)) if entry.content else ""
+
+    return (
+        f"{emoji} <b>{_safe(type_label)} received!</b>  "
+        f"<code>#{entry.id}</code>\n"
+        f"{preview}\n\n"
+        f"⏳ AI enrichment in progress..."
+    )
+
+
+def format_entry_enriched(entry: Entry) -> str:
+    """Notification shown after background AI enrichment completes."""
+    emoji = _emoji(entry)
+    type_label = entry.entry_type.replace("_", " ").title()
+
+    summary_line = ""
+    if entry.summary:
+        summary_line = f"\n\n📋 <b>Summary:</b> {_safe(entry.summary)}"
+
+    tags_line = ""
+    if hasattr(entry, "tags") and entry.tags:
+        tags_line = f"\n🏷 {_format_tags(entry.tags)}"
+
+    return (
+        f"{emoji} <b>{_safe(type_label)} enriched!</b>  "
+        f"<code>#{entry.id}</code>"
+        f"{summary_line}"
+        f"{tags_line}"
+    )
 
 
 def format_tag_list(tags: list[dict]) -> str:

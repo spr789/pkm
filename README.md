@@ -13,6 +13,25 @@ A **Telegram-first** knowledge management system to capture, organize, search, a
 - **Multi-provider AI** — OpenCode, OpenRouter, OpenAI, Anthropic, Gemini with automatic fallback
 - **User authorization** — Telegram user ID allow-list
 
+## Capture flow (two-phase)
+
+```
+You: /note buy groceries
+Bot: 📝 Note received!  #1
+     buy groceries
+     ⏳ AI enrichment in progress...
+
+     [~seconds later — same message gets *edited* in-place]
+
+Bot: 📝 Note enriched!  #1
+     📋 Summary: Remember to pick up milk, eggs, and bread.
+     🏷 #shopping #groceries #errands
+```
+
+Entries are saved **instantly** — the bot replies immediately with a processing indicator. Meanwhile, AI enrichment (summarization + tag extraction) runs in the background. Once complete, the **original message is replaced** with the generated summary and tags.
+
+This applies to `/note`, `/idea`, `/bookmark`, and raw text capture. Tasks and media entries skip AI enrichment.
+
 ## Quick start
 
 ### Prerequisites

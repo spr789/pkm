@@ -9,7 +9,7 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
-from app.bot.formatters import format_entry_saved
+from app.bot.formatters import format_entry_processing
 from app.bot.middleware import authorized_only
 from app.database import sessionmanager
 from app.models.entry import EntryType
@@ -18,15 +18,23 @@ from app.services.entry_service import EntryService
 logger = logging.getLogger(__name__)
 
 
-async def _process_entry_in_background(entry_id: int) -> None:
+async def _process_entry_in_background(
+    entry_id: int, chat_id: int, message_id: int
+) -> None:
     """Open a fresh session and run AI processing on *entry_id*.
 
     This is spawned via ``asyncio.create_task`` so that the user gets an
     immediate confirmation while AI enrichment happens asynchronously.
+    After enrichment completes, the original message is edited to show
+    the AI-generated summary and tags.
     """
     try:
-        from app.ai.router import ai_router
+        from telegram import Bot
+
         from app.ai.processors import AIProcessor
+        from app.ai.router import ai_router
+        from app.bot.formatters import format_entry_enriched
+        from app.config import settings
 
         async with sessionmanager.session() as db:
             service = EntryService(db)
@@ -38,6 +46,19 @@ async def _process_entry_in_background(entry_id: int) -> None:
             processor = AIProcessor(ai_router)
             await processor.process_entry(entry, db)
             logger.info("Background AI processing complete for entry %d", entry_id)
+
+        # Re-fetch to get updated summary and tags
+        async with sessionmanager.session() as db:
+            service = EntryService(db)
+            updated = await service.get_entry(entry_id)
+            if updated and (updated.summary or updated.tags):
+                bot = Bot(token=settings.telegram_bot_token.get_secret_value())
+                await bot.edit_message_text(
+                    chat_id=chat_id,
+                    message_id=message_id,
+                    text=format_entry_enriched(updated),
+                    parse_mode=ParseMode.HTML,
+                )
     except Exception:
         logger.exception("Background AI processing failed for entry %d", entry_id)
 
@@ -63,12 +84,14 @@ async def note_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             source_message_id=update.message.message_id,
         )
 
-    await update.message.reply_text(
-        format_entry_saved(entry), parse_mode=ParseMode.HTML,
+    msg = await update.message.reply_text(
+        format_entry_processing(entry),
+        parse_mode=ParseMode.HTML,
     )
 
-    # Fire-and-forget AI enrichment
-    asyncio.create_task(_process_entry_in_background(entry.id))
+    # Fire-and-forget AI enrichment — replaces this message when done
+    chat_id = update.effective_chat.id
+    asyncio.create_task(_process_entry_in_background(entry.id, chat_id, msg.message_id))
 
 
 @authorized_only
@@ -92,8 +115,10 @@ async def idea_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             source_message_id=update.message.message_id,
         )
 
-    await update.message.reply_text(
-        format_entry_saved(entry), parse_mode=ParseMode.HTML,
+    msg = await update.message.reply_text(
+        format_entry_processing(entry),
+        parse_mode=ParseMode.HTML,
     )
 
-    asyncio.create_task(_process_entry_in_background(entry.id))
+    chat_id = update.effective_chat.id
+    asyncio.create_task(_process_entry_in_background(entry.id, chat_id, msg.message_id))

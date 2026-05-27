@@ -9,7 +9,7 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
-from app.bot.formatters import format_entry_saved
+from app.bot.formatters import format_entry_processing
 from app.bot.handlers.note import _process_entry_in_background
 from app.bot.middleware import authorized_only
 from app.database import sessionmanager
@@ -46,8 +46,10 @@ async def bookmark_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             source_message_id=update.message.message_id,
         )
 
-    await update.message.reply_text(
-        format_entry_saved(entry), parse_mode=ParseMode.HTML,
+    msg = await update.message.reply_text(
+        format_entry_processing(entry),
+        parse_mode=ParseMode.HTML,
     )
 
-    asyncio.create_task(_process_entry_in_background(entry.id))
+    chat_id = update.effective_chat.id
+    asyncio.create_task(_process_entry_in_background(entry.id, chat_id, msg.message_id))
